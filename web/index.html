@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ethno-Atlas — Research Catalogue of Traditional Plant Uses</title>
+<style>
+body{font-family:system-ui,sans-serif;max-width:900px;margin:2em auto;padding:0 1em;line-height:1.5}
+.disclaimer{background:#fff3cd;border:1px solid #e6c200;padding:1em;margin:1em 0}
+.card{border:1px solid #ccc;padding:1em;margin:1em 0;cursor:pointer}
+.card h3{margin:0 0 .3em}
+label{margin-right:1em}
+input,select{padding:.4em;margin:.2em 0}
+#detail{border:2px solid #333;padding:1em;margin:1em 0;display:none}
+</style>
+</head>
+<body>
+<h1>Ethno-Atlas</h1>
+<p>A searchable, sourced catalogue of plants with documented traditional uses, designed for researchers.</p>
+<div class="disclaimer"><strong>Disclaimer — research / educational use only. Not medical advice.</strong> Entries describe traditional and documented uses as recorded in ethnobotanical literature and traditional knowledge. They are not proven efficacy claims, not treatment recommendations, and not a substitute for qualified professional advice. Consult qualified professionals for health decisions. No dosages for treatment are given.</div>
+
+<label>Search name: <input id="q" type="search" placeholder="e.g. turmeric"></label>
+<label>Region: <select id="region"><option value="">All regions</option></select></label>
+<label>Compound class: <select id="compound"><option value="">All compound classes</option></select></label>
+<label>Use keyword: <input id="use" type="search" placeholder="e.g. digestive"></label>
+
+<div id="detail"></div>
+<div id="count"></div>
+<div id="results"></div>
+
+<script>
+let plants = [];
+async function load() {
+  const res = await fetch('../data/plants.json');
+  plants = await res.json();
+  const regions = [...new Set(plants.flatMap(p => p.regions))].sort();
+  const compounds = [...new Set(plants.map(p => p.compound_class))].sort();
+  regions.forEach(r => { const o = document.createElement('option'); o.value = r; o.textContent = r; region.appendChild(o); });
+  compounds.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; compound.appendChild(o); });
+  render();
+}
+function render() {
+  const q = document.getElementById('q').value.toLowerCase();
+  const region = document.getElementById('region').value;
+  const compound = document.getElementById('compound').value;
+  const use = document.getElementById('use').value.toLowerCase();
+  const filtered = plants.filter(p =>
+    (!q || p.scientific_name.toLowerCase().includes(q) || p.common_names.some(c => c.toLowerCase().includes(q))) &&
+    (!region || p.regions.includes(region)) &&
+    (!compound || p.compound_class === compound) &&
+    (!use || p.traditional_use.toLowerCase().includes(use))
+  );
+  document.getElementById('count').textContent = filtered.length + ' result(s) of ' + plants.length;
+  document.getElementById('results').innerHTML = filtered.map((p, i) =>
+    `<div class="card" onclick="show(${plants.indexOf(p)})"><h3>${p.scientific_name}</h3><p>${p.common_names.join(', ')} — ${p.regions.join(', ')}</p><p>${p.traditional_use}</p></div>`
+  ).join('');
+}
+function show(i) {
+  const p = plants[i];
+  const d = document.getElementById('detail');
+  d.style.display = 'block';
+  d.innerHTML = `<h2>${p.scientific_name} (${p.common_names.join(', ')})</h2>
+    <p><strong>Regions:</strong> ${p.regions.join(', ')}</p>
+    <p><strong>Traditional use (as documented):</strong> ${p.traditional_use}</p>
+    <p><strong>Plant part:</strong> ${p.plant_part}</p>
+    <p><strong>Preparation (as traditionally documented):</strong> ${p.preparation}</p>
+    <p><strong>Compound class:</strong> ${p.compound_class}</p>
+    <p><strong>Source-type notes:</strong> ${p.source_notes}</p>
+    <p><em>Research / educational use only. Not medical advice.</em></p>`;
+  window.scrollTo(0, d.offsetTop);
+}
+['q','region','compound','use'].forEach(id => document.getElementById(id).addEventListener('input', render));
+load().catch(e => { document.getElementById('results').textContent = 'Could not load data/plants.json. Serve this folder over HTTP (see README) instead of opening via file:// — ' + e; });
+</script>
+</body>
+</html>
